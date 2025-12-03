@@ -24,6 +24,7 @@ Copy these commands exactly to install the project
 Make sure this is from inside of your venv
 
 ```python app.py```
+
 Navigate to http://localhost:5000
 
 Upload your pictures and click analyze
