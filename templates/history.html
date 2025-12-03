@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Pixelsnitch{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="history-section">
+        <h2>Prediction History</h2>
+        
+        {% if predictions %}
+        <div class="history-stats">
+            <p>Total Predictions: {{ predictions|length }}</p>
+        </div>
+        
+        <div class="history-list">
+            {% for pred in predictions %}
+            <div class="history-item">
+                <div class="history-header">
+                    <span class="history-filename">{{ pred.filename }}</span>
+                    <span class="history-timestamp">{{ pred.timestamp[:19] }}</span>
+                </div>
+                <div class="history-content">
+                    <div class="prediction-badge {{ 'fake' if pred.is_fake else 'real' }}">
+                        {{ pred.prediction }}
+                    </div>
+                    <div class="history-details">
+                        <p><strong>Confidence:</strong> {{ pred.confidence }}%</p>
+                        <p><strong>Real Probability:</strong> {{ pred.real_probability }}%</p>
+                        <p><strong>Fake Probability:</strong> {{ pred.fake_probability }}%</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-history">
+            <p>No predictions yet. Upload an image to get started!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+

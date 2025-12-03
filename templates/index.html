@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Pixelsnitch{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="upload-section">
+        <h2>Upload Image for AI Detection</h2>
+        <p>Upload an image to check if it's real or AI-generated. Works with any type of image content.</p>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="file-upload-wrapper">
+                <div class="drag-drop-zone" id="dragDropZone">
+                    <input type="file" id="fileInput" name="file" accept="image/*" required>
+                    <label for="fileInput" class="file-label" id="fileLabel">
+                        <span class="drag-icon">📁</span>
+                        <span class="file-button">Choose File</span>
+                        <span class="file-name">or drag and drop an image here</span>
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Analyze Image
+            </button>
+        </form>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <p>Processing image...</p>
+        </div>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>Prediction Result</h3>
+            <div class="result-content">
+                <div class="result-layout">
+                    <div class="result-image-container">
+                        <img id="resultImage" src="" alt="Uploaded image" class="result-image">
+                    </div>
+                    <div class="result-details">
+                        <div class="prediction-badge" id="predictionBadge"></div>
+                        <div class="confidence-info">
+                            <p><strong>Confidence:</strong> <span id="confidence"></span>%</p>
+                            <div class="probability-bars">
+                                <div class="prob-item">
+                                    <span>Real:</span>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="realProgress" style="width: 0%"></div>
+                                    </div>
+                                    <span id="realProb"></span>%
+                                </div>
+                                <div class="prob-item">
+                                    <span>Fake:</span>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="fakeProgress" style="width: 0%"></div>
+                                    </div>
+                                    <span id="fakeProb"></span>%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const dragDropZone = document.getElementById('dragDropZone');
+const fileLabel = document.getElementById('fileLabel');
+
+// Update file name display
+fileInput.addEventListener('change', function(e) {
+    const fileName = e.target.files[0]?.name || 'or drag and drop an image here';
+    document.querySelector('.file-name').textContent = fileName;
+    dragDropZone.classList.remove('drag-over');
+});
+
+// Drag and drop event handlers
+dragDropZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDropZone.classList.add('drag-over');
+});
+
+dragDropZone.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDropZone.classList.remove('drag-over');
+});
+
+dragDropZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDropZone.classList.remove('drag-over');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        
+        // Check if it's an image
+        if (file.type.startsWith('image/')) {
+            // Create a new FileList using DataTransfer
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+            
+            // Update file name display
+            document.querySelector('.file-name').textContent = file.name;
+            
+            // Trigger change event to ensure form validation works
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            showError('Please drop an image file');
+        }
+    }
+});
+
+// Prevent default drag behaviors on the document
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    document.addEventListener(eventName, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }, false);
+});
+
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showError('Please select a file');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Hide previous results
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+    
+    // Show loading
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('submitBtn').disabled = true;
+    
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Upload failed');
+        }
+        
+        // Display results
+        displayResult(data);
+        
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('submitBtn').disabled = false;
+    }
+});
+
+function displayResult(data) {
+    const resultDiv = document.getElementById('result');
+    const resultImage = document.getElementById('resultImage');
+    const badge = document.getElementById('predictionBadge');
+    const confidence = document.getElementById('confidence');
+    const realProb = document.getElementById('realProb');
+    const fakeProb = document.getElementById('fakeProb');
+    const realProgress = document.getElementById('realProgress');
+    const fakeProgress = document.getElementById('fakeProgress');
+    
+    // Set image
+    resultImage.src = '/uploads/' + data.filepath;
+    resultImage.alt = data.filename;
+    
+    // Set prediction badge
+    badge.textContent = data.prediction;
+    badge.className = 'prediction-badge ' + (data.is_fake ? 'fake' : 'real');
+    
+    // Set confidence
+    confidence.textContent = data.confidence;
+    
+    // Set probabilities
+    realProb.textContent = data.real_probability;
+    fakeProb.textContent = data.fake_probability;
+    
+    // Set progress bars
+    realProgress.style.width = data.real_probability + '%';
+    fakeProgress.style.width = data.fake_probability + '%';
+    
+    // Show result
+    resultDiv.style.display = 'block';
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('error');
+    errorDiv.textContent = 'Error: ' + message;
+    errorDiv.style.display = 'block';
+}
+</script>
+{% endblock %}
+
+
