@@ -10,8 +10,7 @@ Copy these commands exactly to install the project
 
 **Make/Activate Virtual Environment**
 
-```python3 -m venv venv```
-```source venv/bin/activate```
+```python3 -m venv venv && source venv/bin/activate```
 
 **Install Dependencies**
 
